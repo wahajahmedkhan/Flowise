@@ -27,7 +27,7 @@ const createDocumentStore = async (req: Request, res: Response, next: NextFuncti
 const getAllDocumentStores = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const apiResponse = await documentStoreService.getAllDocumentStores()
-        return res.json(DocumentStoreDTO.fromEntities(apiResponse))
+        return res.json(DocumentStoreDTO.fromEntities(apiResponse, true)) // Use placeholders for list view
     } catch (error) {
         next(error)
     }

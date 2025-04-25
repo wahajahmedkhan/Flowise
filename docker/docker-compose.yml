@@ -2,7 +2,7 @@ version: '3.1'
 
 services:
     flowise:
-        image: flowiseai/flowise
+        image: flowise-custom
         restart: always
         environment:
             - PORT=${PORT}
@@ -49,6 +49,7 @@ services:
             - REDIS_CERT=${REDIS_CERT}
             - REDIS_KEY=${REDIS_KEY}
             - REDIS_CA=${REDIS_CA}
+            - NODE_OPTIONS=--max-old-space-size=6144
         ports:
             - '${PORT}:${PORT}'
         healthcheck:

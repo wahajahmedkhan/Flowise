@@ -237,7 +237,7 @@ export class DocumentStoreDTO {
 
     constructor() {}
 
-    static fromEntity(entity: DocumentStore): DocumentStoreDTO {
+    static fromEntity(entity: DocumentStore, usePlaceholders: boolean = true): DocumentStoreDTO {
         let documentStoreDTO = new DocumentStoreDTO()
 
         Object.assign(documentStoreDTO, entity)
@@ -270,6 +270,41 @@ export class DocumentStoreDTO {
                 documentStoreDTO.totalChars += loader.totalChars || 0
                 documentStoreDTO.totalChunks += loader.totalChunks || 0
                 loader.source = addLoaderSource(loader)
+                
+                // Replace large base64 strings with dummy placeholders when listing all document stores
+                if (usePlaceholders && loader.loaderConfig) {
+                    // Handle different loader types
+                    if (loader.loaderId === 'pdfFile' && loader.loaderConfig.pdfFile) {
+                        if (loader.loaderConfig.pdfFile.startsWith('data:application/pdf;base64,')) {
+                            loader.loaderConfig.pdfFile = 'data:application/pdf;base64,DUMMY_PDF_CONTENT'
+                        }
+                    } else if (loader.loaderId === 'jsonFile' && loader.loaderConfig.jsonFile) {
+                        if (loader.loaderConfig.jsonFile.startsWith('data:application/json;base64,')) {
+                            loader.loaderConfig.jsonFile = 'data:application/json;base64,DUMMY_JSON_CONTENT'
+                        }
+                    } else if (loader.loaderId === 'csvFile' && loader.loaderConfig.csvFile) {
+                        if (loader.loaderConfig.csvFile.startsWith('data:text/csv;base64,')) {
+                            loader.loaderConfig.csvFile = 'data:text/csv;base64,DUMMY_CSV_CONTENT'
+                        }
+                    } else if (loader.loaderId === 'txtFile' && loader.loaderConfig.txtFile) {
+                        if (loader.loaderConfig.txtFile.startsWith('data:text/plain;base64,')) {
+                            loader.loaderConfig.txtFile = 'data:text/plain;base64,DUMMY_TXT_CONTENT'
+                        }
+                    } else if (loader.loaderId === 'file' && loader.loaderConfig.file) {
+                        if (loader.loaderConfig.file.startsWith('data:')) {
+                            loader.loaderConfig.file = 'data:application/octet-stream;base64,DUMMY_FILE_CONTENT'
+                        }
+                    } else if (loader.loaderId === 'unstructuredFileLoader' && loader.loaderConfig.fileObject) {
+                        if (loader.loaderConfig.fileObject.startsWith('data:')) {
+                            loader.loaderConfig.fileObject = 'data:application/octet-stream;base64,DUMMY_FILE_CONTENT'
+                        } else if (loader.loaderConfig.fileObject.startsWith('FILE-STORAGE::')) {
+                            // Keep the filename but replace content
+                            const filename = loader.loaderConfig.fileObject.split('::')[1]
+                            loader.loaderConfig.fileObject = `FILE-STORAGE::${filename}`
+                        }
+                    }
+                }
+                
                 if (loader.status !== 'SYNC') {
                     documentStoreDTO.status = DocumentStoreStatus.STALE
                 }
@@ -279,8 +314,8 @@ export class DocumentStoreDTO {
         return documentStoreDTO
     }
 
-    static fromEntities(entities: DocumentStore[]): DocumentStoreDTO[] {
-        return entities.map((entity) => this.fromEntity(entity))
+    static fromEntities(entities: DocumentStore[], usePlaceholders: boolean = false): DocumentStoreDTO[] {
+        return entities.map((entity) => this.fromEntity(entity, usePlaceholders))
     }
 
     static toEntity(body: any): DocumentStore {
