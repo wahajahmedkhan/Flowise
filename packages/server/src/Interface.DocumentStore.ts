@@ -270,43 +270,56 @@ export class DocumentStoreDTO {
                 documentStoreDTO.totalChars += loader.totalChars || 0
                 documentStoreDTO.totalChunks += loader.totalChunks || 0
                 loader.source = addLoaderSource(loader)
-                
-                // Replace large base64 strings with dummy placeholders when listing all document stores
+                if (loader.status !== 'SYNC') {
+                    documentStoreDTO.status = DocumentStoreStatus.STALE
+                }
+
+                // Replace large base64 strings with dummy placeholders
                 if (usePlaceholders && loader.loaderConfig) {
-                    // Handle different loader types
+                    // Handle PDF files
                     if (loader.loaderId === 'pdfFile' && loader.loaderConfig.pdfFile) {
                         if (loader.loaderConfig.pdfFile.startsWith('data:application/pdf;base64,')) {
                             loader.loaderConfig.pdfFile = 'data:application/pdf;base64,DUMMY_PDF_CONTENT'
                         }
-                    } else if (loader.loaderId === 'jsonFile' && loader.loaderConfig.jsonFile) {
+                    }
+                    // Handle JSON files
+                    else if (loader.loaderId === 'jsonFile' && loader.loaderConfig.jsonFile) {
                         if (loader.loaderConfig.jsonFile.startsWith('data:application/json;base64,')) {
                             loader.loaderConfig.jsonFile = 'data:application/json;base64,DUMMY_JSON_CONTENT'
                         }
-                    } else if (loader.loaderId === 'csvFile' && loader.loaderConfig.csvFile) {
+                    }
+                    // Handle CSV files
+                    else if (loader.loaderId === 'csvFile' && loader.loaderConfig.csvFile) {
                         if (loader.loaderConfig.csvFile.startsWith('data:text/csv;base64,')) {
                             loader.loaderConfig.csvFile = 'data:text/csv;base64,DUMMY_CSV_CONTENT'
                         }
-                    } else if (loader.loaderId === 'txtFile' && loader.loaderConfig.txtFile) {
+                    }
+                    // Handle TXT files
+                    else if (loader.loaderId === 'txtFile' && loader.loaderConfig.txtFile) {
                         if (loader.loaderConfig.txtFile.startsWith('data:text/plain;base64,')) {
                             loader.loaderConfig.txtFile = 'data:text/plain;base64,DUMMY_TXT_CONTENT'
                         }
-                    } else if (loader.loaderId === 'file' && loader.loaderConfig.file) {
-                        if (loader.loaderConfig.file.startsWith('data:')) {
+                    }
+                    // Handle generic file loader
+                    else if (loader.loaderId === 'fileLoader' && loader.loaderConfig.file) {
+                        if (typeof loader.loaderConfig.file === 'string' && loader.loaderConfig.file.startsWith('data:')) {
                             loader.loaderConfig.file = 'data:application/octet-stream;base64,DUMMY_FILE_CONTENT'
                         }
-                    } else if (loader.loaderId === 'unstructuredFileLoader' && loader.loaderConfig.fileObject) {
-                        if (loader.loaderConfig.fileObject.startsWith('data:')) {
-                            loader.loaderConfig.fileObject = 'data:application/octet-stream;base64,DUMMY_FILE_CONTENT'
-                        } else if (loader.loaderConfig.fileObject.startsWith('FILE-STORAGE::')) {
-                            // Keep the filename but replace content
-                            const filename = loader.loaderConfig.fileObject.split('::')[1]
-                            loader.loaderConfig.fileObject = `FILE-STORAGE::${filename}`
-                        }
                     }
-                }
-                
-                if (loader.status !== 'SYNC') {
-                    documentStoreDTO.status = DocumentStoreStatus.STALE
+                    // Handle any other base64 data in loaderConfig
+                    else {
+                        // Scan all properties in loaderConfig for base64 data
+                        Object.keys(loader.loaderConfig).forEach(key => {
+                            const value = loader.loaderConfig[key]
+                            if (typeof value === 'string' && value.startsWith('data:') && value.includes(';base64,')) {
+                                // Extract mime type
+                                const mimeMatch = value.match(/data:([^;]+);base64,/)
+                                const mimeType = mimeMatch ? mimeMatch[1] : 'application/octet-stream'
+                                // Replace with dummy content
+                                loader.loaderConfig[key] = `data:${mimeType};base64,DUMMY_CONTENT`
+                            }
+                        })
+                    }
                 }
             })
         }
